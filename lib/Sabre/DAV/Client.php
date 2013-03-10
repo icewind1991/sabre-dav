@@ -66,7 +66,6 @@ class Client {
      */
     const ENCODING_ALL = 7;
 
-
     /**
      * The authentication type we're using.
      *
@@ -92,6 +91,13 @@ class Client {
      * @var boolean
      */
     protected $verifyPeer;
+
+    /**
+     * The last used curl handle.
+     *
+     * @var resource
+     */
+    protected $curlHandle;
 
     /**
      * Constructor
@@ -520,14 +526,18 @@ class Client {
     // @codeCoverageIgnoreStart
     protected function curlRequest($url, $settings) {
 
-        $curl = curl_init($url);
-        curl_setopt_array($curl, $settings);
+        if (!$this->curlHandle) {
+            $this->curlHandle = curl_init();
+        }
+        $settings[CURLOPT_URL] = $url;
+
+        curl_setopt_array($this->curlHandle, $settings);
 
         return array(
-            curl_exec($curl),
-            curl_getinfo($curl),
-            curl_errno($curl),
-            curl_error($curl)
+            curl_exec($this->curlHandle),
+            curl_getinfo($this->curlHandle),
+            curl_errno($this->curlHandle),
+            curl_error($this->curlHandle)
         );
 
     }

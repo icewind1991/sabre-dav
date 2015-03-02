@@ -62,7 +62,7 @@ class PropFind {
         foreach($this->properties as $propertyName) {
 
             // Seeding properties with 404's.
-            $this->result[$propertyName] = [404, null];
+            $this->result[$propertyName] = new Prop(404, null);
 
         }
         $this->itemsLeft = count($this->result);
@@ -93,7 +93,7 @@ class PropFind {
      */
     function handle($propertyName, $valueOrCallBack) {
 
-        if ($this->itemsLeft && isset($this->result[$propertyName]) && $this->result[$propertyName][0] === 404) {
+        if ($this->itemsLeft && isset($this->result[$propertyName]) && $this->result[$propertyName]->status === 404) {
             if (is_callable($valueOrCallBack)) {
                 $value = $valueOrCallBack();
             } else {
@@ -101,7 +101,8 @@ class PropFind {
             }
             if (!is_null($value)) {
                 $this->itemsLeft--;
-                $this->result[$propertyName] = [200, $value];
+                $this->result[$propertyName]->status = 200;
+                $this->result[$propertyName]->value = $value;
             }
         }
 
@@ -127,16 +128,17 @@ class PropFind {
         // unknown, add it to the result; else ignore it:
         if (!isset($this->result[$propertyName])) {
             if ($this->requestType === self::ALLPROPS) {
-                $this->result[$propertyName] = [$status, $value];
+                $this->result[$propertyName] = new Prop($status, $value);
             }
             return;
         }
-        if ($status!==404 && $this->result[$propertyName][0]===404) {
+        if ($status!==404 && $this->result[$propertyName]->status===404) {
             $this->itemsLeft--;
-        } elseif ($status === 404 && $this->result[$propertyName][0] !== 404) {
+        } elseif ($status === 404 && $this->result[$propertyName]->status !== 404) {
             $this->itemsLeft++;
         }
-        $this->result[$propertyName] = [$status, $value];
+		$this->result[$propertyName]->status = $status;
+		$this->result[$propertyName]->value = $value;
 
     }
 
@@ -148,7 +150,7 @@ class PropFind {
      */
     function get($propertyName) {
 
-        return isset($this->result[$propertyName])?$this->result[$propertyName][1]:null;
+        return isset($this->result[$propertyName])?$this->result[$propertyName]->value:null;
 
     }
 
@@ -163,7 +165,7 @@ class PropFind {
      */
     function getStatus($propertyName) {
 
-        return isset($this->result[$propertyName])?$this->result[$propertyName][0]:null;
+        return isset($this->result[$propertyName])?$this->result[$propertyName]->status:null;
 
     }
 
@@ -226,7 +228,7 @@ class PropFind {
         }
         $result = [];
         foreach($this->result as $propertyName=>$stuff) {
-            if ($stuff[0]===404) {
+            if ($stuff->status===404) {
                 $result[] = $propertyName;
             }
         }
@@ -266,10 +268,10 @@ class PropFind {
             404 => [],
         ];
         foreach($this->result as $propertyName=>$info) {
-            if (!isset($r[$info[0]])) {
-                $r[$info[0]] = [$propertyName => $info[1]];
+            if (!isset($r[$info->status])) {
+                $r[$info->status] = [$propertyName => $info->value];
             } else {
-                $r[$info[0]][$propertyName] = $info[1];
+                $r[$info->status][$propertyName] = $info->value;
             }
         }
         // Removing the 404's for multi-status requests.
@@ -311,17 +313,8 @@ class PropFind {
      * The result of the operation.
      *
      * The keys in this array are property names.
-     * The values are an array with two elements: the http status code and then
-     * optionally a value.
      *
-     * Example:
-     *
-     * [
-     *    "{DAV:}owner" : [404],
-     *    "{DAV:}displayname" : [200, "Admin"]
-     * ]
-     *
-     * @var array
+     * @var Prop[]
      */
     protected $result = [];
 
